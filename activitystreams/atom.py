@@ -34,12 +34,14 @@ ATOM_ID = ATOM_PREFIX + "id"
 ATOM_AUTHOR = ATOM_PREFIX + "author"
 ATOM_SOURCE = ATOM_PREFIX + "source"
 ATOM_TITLE = ATOM_PREFIX + "title"
+ATOM_SUMMARY = ATOM_PREFIX + "summary"
 ATOM_CONTENT = ATOM_PREFIX + "content"
 ATOM_LINK = ATOM_PREFIX + "link"
 ATOM_PUBLISHED = ATOM_PREFIX + "published"
 ATOM_NAME = ATOM_PREFIX + "name"
 ATOM_URI = ATOM_PREFIX + "uri"
 ATOM_GENERATOR = ATOM_PREFIX + "generator"
+ATOM_ICON = ATOM_PREFIX + "icon"
 ACTIVITY_SUBJECT = ACTIVITY_PREFIX + "subject"
 ACTIVITY_OBJECT = ACTIVITY_PREFIX + "object"
 ACTIVITY_OBJECT_TYPE = ACTIVITY_PREFIX + "object-type"
@@ -86,8 +88,6 @@ def make_activities_from_entry(entry_elem, feed_elem):
     target_elem = entry_elem.find(ACTIVITY_TARGET)
 
     published_elem = entry_elem.find(ATOM_PUBLISHED)
-
-    published_elem = entry_elem.find(ATOM_PUBLISHED)
     published_datetime = None
     if published_elem is not None:
         published_w3cdtf = published_elem.text
@@ -99,6 +99,11 @@ def make_activities_from_entry(entry_elem, feed_elem):
         verbs = [ POST_VERB ]
 
     generator_elem = entry_elem.find(ATOM_GENERATOR)
+
+    icon_url = None
+    icon_elem = entry_elem.find(ATOM_ICON)
+    if icon_elem is not None:
+        icon_url = icon_elem.text
 
     target = None
     if target_elem:
@@ -115,7 +120,7 @@ def make_activities_from_entry(entry_elem, feed_elem):
         else:
             object = make_object_from_elem(object_elem, feed_elem, ObjectParseMode.ACTIVITY_OBJECT)
 
-        activity = Activity(object=object, actor=actor, target=target, verbs=verbs, time=published_datetime)
+        activity = Activity(object=object, actor=actor, target=target, verbs=verbs, time=published_datetime, icon_url=icon_url)
         activities.append(activity)
 
     return activities
@@ -128,6 +133,11 @@ def make_object_from_elem(object_elem, feed_elem, mode):
     if id_elem is not None:
         id = id_elem.text
 
+    summary = None
+    summary_elem = object_elem.find(ATOM_SUMMARY)
+    if summary_elem is not None:
+        summary = summary_elem.text
+
     name_tag_name = ATOM_TITLE
     # The ATOM_AUTHOR parsing mode looks in atom:name instead of atom:title
     if mode == ObjectParseMode.ATOM_AUTHOR:
@@ -138,14 +148,17 @@ def make_object_from_elem(object_elem, feed_elem, mode):
         name = name_elem.text
 
     url = None
+    image_url = None
     for link_elem in object_elem.findall(ATOM_LINK):
         type = link_elem.get("type")
         rel = link_elem.get("rel")
         if rel is None or rel == "alternate":
             if type is None or type == "text/html":
                 url = link_elem.get("href")
-                break
-
+        if rel == "preview":
+            if type is None or type == "image/jpeg" or type == "image/gif" or type == "image/png":
+                image_url = link_elem.get("href")
+ 
     # In the atom:author parse mode we fall back on atom:uri if there's no link rel="alternate"
     if url is None and mode == ObjectParseMode.ATOM_AUTHOR:
         uri_elem = object_elem.find(ATOM_URI)
@@ -154,7 +167,7 @@ def make_object_from_elem(object_elem, feed_elem, mode):
 
     object_types = [elem.text for elem in object_elem.findall(ACTIVITY_OBJECT_TYPE)]
 
-    return Object(id=id, name=name, url=url, object_types=object_types)
+    return Object(id=id, name=name, url=url, object_types=object_types, image_url=image_url, summary=summary)
 
 
 # This is pilfered from Universal Feed Parser.
