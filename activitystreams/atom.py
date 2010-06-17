@@ -1,6 +1,6 @@
 
 
-from activitystreams import Activity, Object
+from activitystreams import Activity, Object, MediaLink, ActionLink, Link
 
 
 import re
@@ -93,10 +93,12 @@ def make_activities_from_entry(entry_elem, feed_elem):
         published_w3cdtf = published_elem.text
         published_datetime = _parse_date_w3cdtf(published_w3cdtf)
 
-    verbs = [elem.text for elem in entry_elem.findall(ACTIVITY_VERB)]
-
-    if (len(verbs) == 0):
-        verbs = [ POST_VERB ]
+    verb_elem = entry_elem.find(ACTIVITY_VERB)
+    verb = None
+    if verb_elem is not None:
+        verb = verb_elem.text
+    else:
+        verb = POST_VERB
 
     generator_elem = entry_elem.find(ATOM_GENERATOR)
 
@@ -120,7 +122,7 @@ def make_activities_from_entry(entry_elem, feed_elem):
         else:
             object = make_object_from_elem(object_elem, feed_elem, ObjectParseMode.ACTIVITY_OBJECT)
 
-        activity = Activity(object=object, actor=actor, target=target, verbs=verbs, time=published_datetime, icon_url=icon_url)
+        activity = Activity(object=object, actor=actor, target=target, verb=verb, time=published_datetime, icon_url=icon_url)
         activities.append(activity)
 
     return activities
@@ -148,7 +150,7 @@ def make_object_from_elem(object_elem, feed_elem, mode):
         name = name_elem.text
 
     url = None
-    image_url = None
+    image = None
     for link_elem in object_elem.findall(ATOM_LINK):
         type = link_elem.get("type")
         rel = link_elem.get("rel")
@@ -157,17 +159,21 @@ def make_object_from_elem(object_elem, feed_elem, mode):
                 url = link_elem.get("href")
         if rel == "preview":
             if type is None or type == "image/jpeg" or type == "image/gif" or type == "image/png":
-                image_url = link_elem.get("href")
- 
+                # FIXME: Should pull out the width/height/duration attributes from AtomMedia too.
+                image = MediaLink(url=link_elem.get("href"))
+
     # In the atom:author parse mode we fall back on atom:uri if there's no link rel="alternate"
     if url is None and mode == ObjectParseMode.ATOM_AUTHOR:
         uri_elem = object_elem.find(ATOM_URI)
         if uri_elem is not None:
             url = uri_elem.text
 
-    object_types = [elem.text for elem in object_elem.findall(ACTIVITY_OBJECT_TYPE)]
+    object_type_elem = object_elem.find(ACTIVITY_OBJECT_TYPE)
+    object_type = None
+    if object_type_elem is not None:
+        object_type = object_type_elem.text
 
-    return Object(id=id, name=name, url=url, object_types=object_types, image_url=image_url, summary=summary)
+    return Object(id=id, name=name, url=url, object_type=object_type, image=image, summary=summary)
 
 
 # This is pilfered from Universal Feed Parser.
