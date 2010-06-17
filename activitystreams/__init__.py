@@ -40,8 +40,9 @@ class Object(object):
     action_links = None
     upstream_duplicate_ids = None
     downstream_duplicate_ids = None
+    links = None
 
-    def __init__(self, id=None, name=None, url=None, object_type=None, summary=None, image=None, in_reply_to_object=None, attached_objects=None, reply_objects=None, reaction_activities=None, action_links=None, upstream_duplicate_ids=None, downstream_duplicate_ids=None):
+    def __init__(self, id=None, name=None, url=None, object_type=None, summary=None, image=None, in_reply_to_object=None, attached_objects=None, reply_objects=None, reaction_activities=None, action_links=None, upstream_duplicate_ids=None, downstream_duplicate_ids=None, links=None):
         self.id = id
         self.name = name
         self.url = url
@@ -79,6 +80,11 @@ class Object(object):
             self.downstream_duplicate_ids = downstream_duplicate_ids
         else:
             self.downstream_duplicate_ids = []
+
+        if links is not None:
+            self.links = links
+        else:
+            self.links = []
 
 
 class MediaLink(object):
